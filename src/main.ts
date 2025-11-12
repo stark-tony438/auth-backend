@@ -5,6 +5,10 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 
+function normalizeOrigin(origin?: string | null) {
+  if (!origin) return origin;
+  return origin.replace(/\/+$/, ''); // remove trailing slashes
+}
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
@@ -19,10 +23,24 @@ async function bootstrap() {
       transformOptions: { enableImplicitConversion: true }, // optional: auto-cast types
     }),
   );
+  const allowed = [process.env.APP_URL.replace(/\/+$/, '')];
+
   app.enableCors({
-    origin: '*',
-    // origin: config.get('APP_URL') || 'http://localhost:3000',
+    origin: (origin, callback) => {
+      // allow server-to-server and tools with no origin
+      if (!origin) return callback(null, true);
+
+      const requestOrigin = normalizeOrigin(origin);
+      if (allowed.includes(requestOrigin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error('Not allowed by CORS'), false);
+      }
+    },
     credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Authorization, X-Requested-With',
+    optionsSuccessStatus: 204,
   });
 
   const nodeEnv = config.get('NODE_ENV') || 'development';
