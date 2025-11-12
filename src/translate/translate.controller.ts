@@ -9,8 +9,8 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody } from '@nestjs/swagger';
 export class TranslateController {
   constructor(private readonly translateService: TranslateService) {}
 
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  // @UseGuards(JwtAuthGuard)
+  // @ApiBearerAuth()
   @ApiOperation({ summary: 'Translate text using LibreTranslate' })
   @ApiBody({ type: TranslateDto })
   @Post()
