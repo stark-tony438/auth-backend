@@ -20,7 +20,8 @@ async function bootstrap() {
     }),
   );
   app.enableCors({
-    origin: config.get('APP_URL') || 'http://localhost:3000',
+    origin: '*',
+    // origin: config.get('APP_URL') || 'http://localhost:3000',
     credentials: true,
   });
 
