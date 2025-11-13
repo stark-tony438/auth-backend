@@ -20,22 +20,20 @@ async function bootstrap() {
     }),
   );
 
-  // ✅ Simplified, allows all origins
+  // ✅ Simplified CORS config for all origins (public access)
   app.enableCors({
-    origin: true,
-    credentials: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Authorization, X-Requested-With',
+    origin: '*', // allow all origins
+    credentials: false, // disable credentials since no JWT/cookies used
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   });
 
   const nodeEnv = config.get('NODE_ENV') || 'development';
   if (nodeEnv !== 'production') {
     const swaggerConfig = new DocumentBuilder()
       .setTitle('My API')
-      .setDescription('Auth + other endpoints')
+      .setDescription('Public API (no auth)')
       .setVersion('1.0')
-      .addBearerAuth()
-      .addCookieAuth('refreshToken')
       .build();
 
     const document = SwaggerModule.createDocument(app, swaggerConfig);
