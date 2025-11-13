@@ -22,7 +22,7 @@ async function bootstrap() {
 
   // ✅ Simplified CORS config for all origins (public access)
   app.enableCors({
-    origin: '*', // allow all origins
+    origin: 'https://main.d1q2aiveq48ddo.amplifyapp.com',
     credentials: false, // disable credentials since no JWT/cookies used
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
