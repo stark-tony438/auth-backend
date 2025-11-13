@@ -5,62 +5,83 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 
-function normalizeOrigin(origin?: string | null) {
-  if (!origin) return origin;
+function normalizeOrigin(origin?: string | null): string | undefined {
+  if (!origin) return undefined;
   return origin.replace(/\/+$/, ''); // remove trailing slashes
 }
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
 
+  // Middlewares
   app.use(cookieParser());
-
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       transform: true,
       forbidNonWhitelisted: false,
-      transformOptions: { enableImplicitConversion: true }, // optional: auto-cast types
+      transformOptions: { enableImplicitConversion: true },
     }),
   );
-  const allowed = [process.env.APP_URL.replace(/\/+$/, '')];
+
+  // --- ✅ CORS configuration ---
+  const appUrl = config.get<string>('APP_URL', '');
+  const nodeEnv = config.get<string>('NODE_ENV', 'development');
+
+  // Normalize allowed origins
+  const allowedOrigins = [
+    normalizeOrigin(appUrl), // Amplify
+    normalizeOrigin('http://localhost:3000'), // Local dev frontend
+    normalizeOrigin('http://localhost:4000'), // Local API testing
+  ].filter(Boolean) as string[];
+
+  console.log('✅ Allowed CORS origins:', allowedOrigins);
 
   app.enableCors({
     origin: (origin, callback) => {
-      // allow server-to-server and tools with no origin
+      // Allow server-to-server or tools with no origin (like curl, Postman)
       if (!origin) return callback(null, true);
 
       const requestOrigin = normalizeOrigin(origin);
-      if (allowed.includes(requestOrigin)) {
+      if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
         return callback(null, true);
-      } else {
-        return callback(new Error('Not allowed by CORS'), false);
       }
+
+      console.warn('🚫 CORS blocked for origin:', origin);
+      return callback(new Error(`Not allowed by CORS: ${origin}`), false);
     },
     credentials: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Authorization, X-Requested-With',
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+    ],
     optionsSuccessStatus: 204,
   });
 
-  const nodeEnv = config.get('NODE_ENV') || 'development';
+  // --- ✅ Swagger setup (only for non-production) ---
   if (nodeEnv !== 'production') {
     const swaggerConfig = new DocumentBuilder()
-      .setTitle('My API')
-      .setDescription('Auth + other endpoints')
+      .setTitle('UmrahTaxi API')
+      .setDescription('API documentation for authentication and services')
       .setVersion('1.0')
       .addBearerAuth()
-      // register cookie auth so UI knows refresh-token is cookie-based
       .addCookieAuth('refreshToken')
       .build();
 
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup('docs', app, document);
-    // docs available at: http://<host>:<port>/docs
-    console.log('Swagger docs available at /docs');
+    console.log('📘 Swagger docs available at /docs');
   }
-  const port = config.get('PORT') || 4000;
+
+  // --- ✅ Server start ---
+  const port = config.get<number>('PORT', 4000);
   await app.listen(port);
-  console.log(`Server running on port ${port}`);
+  console.log(`🚀 Server running on port ${port}`);
 }
+
 bootstrap();
