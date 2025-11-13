@@ -5,17 +5,12 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 
-function normalizeOrigin(origin?: string | null): string | undefined {
-  if (!origin) return undefined;
-  return origin.replace(/\/+$/, ''); // remove trailing slashes
-}
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
 
-  // Middlewares
   app.use(cookieParser());
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -25,49 +20,19 @@ async function bootstrap() {
     }),
   );
 
-  // --- ✅ CORS configuration ---
-  const appUrl = config.get<string>('APP_URL', '');
-  const nodeEnv = config.get<string>('NODE_ENV', 'development');
-
-  // Normalize allowed origins
-  const allowedOrigins = [
-    normalizeOrigin(appUrl), // Amplify
-    normalizeOrigin('http://localhost:3000'), // Local dev frontend
-    normalizeOrigin('http://localhost:4000'), // Local API testing
-  ].filter(Boolean) as string[];
-
-  console.log('✅ Allowed CORS origins:', allowedOrigins);
-
+  // ✅ Simplified, allows all origins
   app.enableCors({
-    origin: (origin, callback) => {
-      // Allow server-to-server or tools with no origin (like curl, Postman)
-      if (!origin) return callback(null, true);
-
-      const requestOrigin = normalizeOrigin(origin);
-      if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
-        return callback(null, true);
-      }
-
-      console.warn('🚫 CORS blocked for origin:', origin);
-      return callback(new Error(`Not allowed by CORS: ${origin}`), false);
-    },
+    origin: true,
     credentials: true,
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'X-Requested-With',
-      'Accept',
-      'Origin',
-    ],
-    optionsSuccessStatus: 204,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Authorization, X-Requested-With',
   });
 
-  // --- ✅ Swagger setup (only for non-production) ---
+  const nodeEnv = config.get('NODE_ENV') || 'development';
   if (nodeEnv !== 'production') {
     const swaggerConfig = new DocumentBuilder()
-      .setTitle('UmrahTaxi API')
-      .setDescription('API documentation for authentication and services')
+      .setTitle('My API')
+      .setDescription('Auth + other endpoints')
       .setVersion('1.0')
       .addBearerAuth()
       .addCookieAuth('refreshToken')
@@ -75,13 +40,10 @@ async function bootstrap() {
 
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup('docs', app, document);
-    console.log('📘 Swagger docs available at /docs');
   }
 
-  // --- ✅ Server start ---
-  const port = config.get<number>('PORT', 4000);
+  const port = config.get('PORT') || 4000;
   await app.listen(port);
   console.log(`🚀 Server running on port ${port}`);
 }
-
 bootstrap();
