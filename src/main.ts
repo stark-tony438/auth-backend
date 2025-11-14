@@ -22,11 +22,9 @@ async function bootstrap() {
 
   // ✅ Simplified CORS config for all origins (public access)
   app.enableCors({
-    origin: "https://main.d1q2aiveq48ddo.amplifyapp.com",
-    credentials: false,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    origin: false,
   });
+
 
 
   const nodeEnv = config.get('NODE_ENV') || 'development';
